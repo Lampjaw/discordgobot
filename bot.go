@@ -194,9 +194,11 @@ func handleCommandsRequest(b *Gobot, message Message) bool {
 	for _, plugin := range b.Plugins {
 		var h []string
 
-		if plugin.Commands() == nil {
-			h = plugin.Help(b.Client, message, false)
-		} else {
+		helpResult := plugin.Help(b.Client, message, false)
+
+		if helpResult != nil {
+			h = helpResult
+		} else if plugin.Commands() != nil {
 			for _, commandDefinition := range plugin.Commands() {
 				h = append(h, commandDefinition.Help(b.Client))
 			}
