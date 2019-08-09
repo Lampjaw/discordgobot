@@ -1,6 +1,7 @@
 package discordgobot
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -53,4 +54,27 @@ func (p *Plugin) Help(client *DiscordClient, message Message, detailed bool) []s
 // Message is a callback from every incoming message. Setting Commands is recommended unless you need to see everything.
 func (p *Plugin) Message(bot *Gobot, client *DiscordClient, message Message) error {
 	return nil
+}
+
+func validatePlugin(plugin IPlugin) bool {
+	errors := make([]string, 0)
+
+	if plugin.Name() == "" {
+		errors = append(errors, "Plugin validation error: Missing required Name")
+	}
+
+	for _, command := range plugin.Commands() {
+		if isValid, commandErrors := command.IsValid(); !isValid {
+			errors = append(errors, commandErrors...)
+		}
+	}
+
+	if len(errors) > 0 {
+		for _, errmsg := range errors {
+			fmt.Printf("Plugin validation error: %s: %s", plugin.Name(), errmsg)
+		}
+		return false
+	}
+
+	return true
 }

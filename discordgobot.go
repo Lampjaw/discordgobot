@@ -5,6 +5,9 @@ import (
 	"fmt"
 )
 
+// VERSION of discordgobot
+const VERSION = "0.1.0"
+
 // NewBot creates a new Gobot
 func NewBot(token string, prefix string, clientID string, ownerUserID string) (b *Gobot, err error) {
 	if token == "" {
