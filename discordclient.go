@@ -311,6 +311,15 @@ func (d *DiscordClient) ChannelCount() int {
 	return len(d.Guilds())
 }
 
+// UserCount returns the number of users the client is connected to
+func (d *DiscordClient) UserCount() int {
+	totalCount := 0
+	for _, guild := range d.Guilds() {
+		totalCount += guild.MemberCount
+	}
+	return totalCount
+}
+
 // MessageHistory returns the last x number of messages from a channel
 func (d *DiscordClient) MessageHistory(channel string) []Message {
 	c, err := d.Channel(channel)
