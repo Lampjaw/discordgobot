@@ -19,10 +19,9 @@ func NewBot(token string, config *GobotConf) (b *Gobot, err error) {
 
 	bot := &Gobot{
 		Client: &DiscordClient{
-			args:                args,
-			messageChan:         make(chan Message, 200),
-			ApplicationClientID: config.ClientID,
-			OwnerUserID:         config.OwnerUserID,
+			args:        args,
+			messageChan: make(chan Message, 200),
+			OwnerUserID: config.OwnerUserID,
 		},
 		Plugins: make(map[string]IPlugin, 0),
 		Config:  config,

@@ -42,10 +42,9 @@ type DiscordClient struct {
 	args        []interface{}
 	messageChan chan Message
 
-	Session             *discordgo.Session
-	Sessions            []*discordgo.Session
-	OwnerUserID         string
-	ApplicationClientID string
+	Session     *discordgo.Session
+	Sessions    []*discordgo.Session
+	OwnerUserID string
 }
 
 var channelIDRegex = regexp.MustCompile("<#[0-9]*>")
