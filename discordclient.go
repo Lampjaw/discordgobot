@@ -46,7 +46,6 @@ type DiscordClient struct {
 	Sessions            []*discordgo.Session
 	OwnerUserID         string
 	ApplicationClientID string
-	prefix              string
 }
 
 var channelIDRegex = regexp.MustCompile("<#[0-9]*>")
@@ -298,12 +297,6 @@ func (d *DiscordClient) IsModerator(message Message) bool {
 	}
 
 	return d.IsChannelOwner(message)
-}
-
-// CommandPrefix returns the string every command is prefixed with
-func (d *DiscordClient) CommandPrefix() string {
-	//return fmt.Sprintf("@%s ", d.UserName())
-	return d.prefix
 }
 
 // ChannelCount returns the number of channels the client is connected to

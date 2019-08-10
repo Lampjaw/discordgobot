@@ -16,6 +16,12 @@ type CommandDefinition struct {
 	PermissionLevel PermissionLevel
 	// ExposureLevel restricts commands from being processed in either public, private, or both settings. Default is EXPOSURE_EVERYWHERE.
 	ExposureLevel ExposureLevel
+	// Unlisted prevents a command from being listed when a user calls the commands list.
+	Unlisted bool
+	// CommandPrefix allows a different prefix to be set compared to the rest of the bot commands.
+	CommandPrefix string
+	// CommandPrefixFunc allows a function to be used to determine the command prefix.
+	CommandPrefixFunc func(bot *Gobot, client *DiscordClient, message Message) string
 	// Callback is a function reference that's called when a message meets trigger and argument requirements.
 	Callback func(bot *Gobot, client *DiscordClient, message Message, args map[string]string, trigger string)
 }
@@ -77,7 +83,7 @@ func (c *CommandDefinition) IsValid() (bool, []string) {
 }
 
 // Help generates a help string from a CommandDefinition
-func (c *CommandDefinition) Help(client *DiscordClient) string {
+func (c *CommandDefinition) Help(client *DiscordClient, commandPrefix string) string {
 	var arguments []string
 
 	if c.Arguments != nil && len(c.Arguments) > 0 {
@@ -87,7 +93,7 @@ func (c *CommandDefinition) Help(client *DiscordClient) string {
 		}
 	}
 
-	return CommandHelp(client, c.Triggers[0], arguments, c.Description)
+	return CommandHelp(client, c.Triggers[0], arguments, c.Description, commandPrefix)
 }
 
 // IsValid determines if the command definition argument is configured correctly
@@ -106,8 +112,8 @@ func (c *CommandDefinitionArgument) IsValid() (bool, []string) {
 }
 
 // CommandHelp is a helper message that creates help text for a command.
-func CommandHelp(client *DiscordClient, command string, arguments []string, description string) string {
-	commandString := fmt.Sprintf("%s%s", client.CommandPrefix(), command)
+func CommandHelp(client *DiscordClient, command string, arguments []string, description string, commandPrefix string) string {
+	commandString := fmt.Sprintf("%s%s", commandPrefix, command)
 
 	if arguments != nil && len(arguments) > 0 {
 		for _, argument := range arguments {

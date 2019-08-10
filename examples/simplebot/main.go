@@ -25,7 +25,11 @@ func main() {
 
 	q := make(chan bool)
 
-	b, err := discordgobot.NewBot(token, "?", "", "")
+	config := &discordgobot.GobotConf{
+		CommandPrefix: "?",
+	}
+
+	b, err := discordgobot.NewBot(token, config)
 
 	if err != nil {
 		log.Println(err)

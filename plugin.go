@@ -14,7 +14,7 @@ type IPlugin interface {
 	// Save stores state information for the plugin
 	Save() error
 	// Help returns an optional response for when ?commands is called
-	Help(*DiscordClient, Message, bool) []string
+	Help(*Gobot, *DiscordClient, Message, bool) []string
 	// Message is a callback from every incoming message. Setting Commands is recommended unless you need to see everything.
 	Message(*Gobot, *DiscordClient, Message) error
 	// Commands returns an array of CommandDefinitions
@@ -47,7 +47,7 @@ func (p *Plugin) Save() error {
 }
 
 // Help returns an optional response for when ?commands is called
-func (p *Plugin) Help(client *DiscordClient, message Message, detailed bool) []string {
+func (p *Plugin) Help(bot *Gobot, client *DiscordClient, message Message, detailed bool) []string {
 	return nil
 }
 

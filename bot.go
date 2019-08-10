@@ -10,10 +10,28 @@ import (
 	"strings"
 )
 
+// DEFAULT_COMMAND_PREFIX is the default prefix character if none is configured
+const DEFAULT_COMMAND_PREFIX = "?"
+
+// GobotConf defines operational parameters to be used with NewBot
+type GobotConf struct {
+	// CommandPrefix is a string thats prefixed to every command trigger.
+	CommandPrefix string
+	// CommandPrefixFunc allows for a CommandPrefix to be dynamically chosen during processing.
+	CommandPrefixFunc func(bot *Gobot, client *DiscordClient, message Message) string
+	// ClientID sets the known client id of the bot. Potentially useful in some plugins.
+	ClientID string
+	// OwnerUserID is the OwnerUserId. Needed for processing commands restricted to the owner permission.
+	OwnerUserID string
+	// CommandLookupDisabled allows for the ?commands command to be disabled
+	CommandLookupDisabled bool
+}
+
 // Gobot handles bot related functionality
 type Gobot struct {
 	Client          *DiscordClient
 	Plugins         map[string]IPlugin
+	Config          *GobotConf
 	messageChannels []chan Message
 }
 
@@ -57,6 +75,21 @@ func (b *Gobot) RegisterPlugin(plugin IPlugin) {
 	b.Plugins[plugin.Name()] = plugin
 }
 
+// GetCommandPrefix returns the prefix as configured in the GobotConf or the default if non is available
+func (b *Gobot) GetCommandPrefix(message Message) string {
+	if b.Config != nil {
+		if b.Config.CommandPrefixFunc != nil {
+			return b.Config.CommandPrefixFunc(b, b.Client, message)
+		}
+
+		if b.Config.CommandPrefix != "" {
+			return b.Config.CommandPrefix
+		}
+	}
+
+	return DEFAULT_COMMAND_PREFIX
+}
+
 func (b *Gobot) getData(plugin IPlugin) []byte {
 	fileName := "data/" + plugin.Name()
 
@@ -72,7 +105,9 @@ func (b *Gobot) listen(messageChan <-chan Message) {
 	for {
 		message := <-messageChan
 
-		if handleCommandsRequest(b, message) {
+		commandPrefix := b.GetCommandPrefix(message)
+
+		if handleCommandsRequest(b, message, commandPrefix) {
 			continue
 		}
 
@@ -80,13 +115,13 @@ func (b *Gobot) listen(messageChan <-chan Message) {
 		for _, plugin := range plugins {
 			go plugin.Message(b, b.Client, message)
 			if !b.Client.IsMe(message) {
-				go findCommandMatch(b, plugin, message)
+				go findCommandMatch(b, plugin, message, commandPrefix)
 			}
 		}
 	}
 }
 
-func findCommandMatch(b *Gobot, plugin IPlugin, message Message) {
+func findCommandMatch(b *Gobot, plugin IPlugin, message Message, commandPrefix string) {
 	if plugin.Commands() == nil || message.Message() == "" {
 		return
 	}
@@ -124,8 +159,14 @@ func findCommandMatch(b *Gobot, plugin IPlugin, message Message) {
 			}
 		}
 
+		definitionPrefix := getPrefixFromCommand(b, b.Client, commandDefinition, message)
+
+		if definitionPrefix == "" {
+			definitionPrefix = commandPrefix
+		}
+
 		for _, trigger := range commandDefinition.Triggers {
-			var trig = b.Client.CommandPrefix() + trigger
+			var trig = definitionPrefix + trigger
 			var parts = strings.Split(message.Message(), " ")
 
 			if parts[0] == trig {
@@ -181,8 +222,13 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func handleCommandsRequest(b *Gobot, message Message) bool {
-	var trig = b.Client.CommandPrefix() + "commands"
+func handleCommandsRequest(b *Gobot, message Message, commandPrefix string) bool {
+	if b.Config.CommandLookupDisabled {
+		return false
+	}
+
+	var trig = commandPrefix + "commands"
+
 	var parts = strings.Split(message.Message(), " ")
 
 	if parts[0] != trig {
@@ -194,13 +240,23 @@ func handleCommandsRequest(b *Gobot, message Message) bool {
 	for _, plugin := range b.Plugins {
 		var h []string
 
-		helpResult := plugin.Help(b.Client, message, false)
+		helpResult := plugin.Help(b, b.Client, message, false)
 
 		if helpResult != nil {
 			h = helpResult
 		} else if plugin.Commands() != nil {
 			for _, commandDefinition := range plugin.Commands() {
-				h = append(h, commandDefinition.Help(b.Client))
+				if commandDefinition.Unlisted {
+					continue
+				}
+
+				definitionPrefix := getPrefixFromCommand(b, b.Client, commandDefinition, message)
+
+				if definitionPrefix == "" {
+					definitionPrefix = commandPrefix
+				}
+
+				h = append(h, commandDefinition.Help(b.Client, definitionPrefix))
 			}
 		}
 
@@ -218,4 +274,16 @@ func handleCommandsRequest(b *Gobot, message Message) bool {
 	b.Client.SendMessage(message.Channel(), strings.Join(help, "\n"))
 
 	return true
+}
+
+func getPrefixFromCommand(bot *Gobot, client *DiscordClient, command CommandDefinition, message Message) string {
+	if command.CommandPrefixFunc != nil {
+		return command.CommandPrefixFunc(bot, client, message)
+	}
+
+	if command.CommandPrefix != "" {
+		return command.CommandPrefix
+	}
+
+	return ""
 }
