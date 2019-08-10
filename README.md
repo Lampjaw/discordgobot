@@ -43,6 +43,40 @@ Check out the Examples to see how everything is tied together and how to make a 
 
 A command definition is a built in way to tell a plugin when to run an action.
 
+### Example
+
+```go
+discordgobot.CommandDefinition{
+    CommandID: "example-command",
+    Triggers: []string{
+        "doathing",
+    },
+    Arguments: []discordgobot.CommandDefinitionArgument{
+        discordgobot.CommandDefinitionArgument{
+            Pattern: "[a-zA-Z0-9]*",
+            Alias:   "myFirstArg",
+        },
+        discordgobot.CommandDefinitionArgument{
+            Pattern: ".*",
+            Alias:   "everythingElseArg",
+        },
+    },
+    Description: "Say hello",
+    ExposureLevel: discordgobot.EXPOSURE_EVERYWHERE,
+    PermissionLevel: discordgobot.PERMISSION_MODERATOR,
+    Callback:    p.runCommand,
+}
+
+func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.DiscordClient, message discordgobot.Message, args map[string]string, trigger string) {
+    myFirstArg := args["myFirstArg"]
+    everythingElseArg := args["everythingElseArg"]
+
+    client.SendMessage(message.Channel(), "Hello!")
+}
+```
+
+## Models
+
 ### [Model] GobotConf
 
 `CommandPrefix string` - A string thats prefixed to every command trigger. Defaults to "?".
@@ -84,35 +118,3 @@ A command definition is a built in way to tell a plugin when to run an action.
 `Pattern string` - (Required) A regex pattern to validate and extract the argument from.
 
 `Optional bool` - If an argument is optional than the command will execute even if the argument isn't provided in the input.
-
-### Example
-
-```go
-discordgobot.CommandDefinition{
-    CommandID: "example-command",
-    Triggers: []string{
-        "doathing",
-    },
-    Arguments: []discordgobot.CommandDefinitionArgument{
-        discordgobot.CommandDefinitionArgument{
-            Pattern: "[a-zA-Z0-9]*",
-            Alias:   "myFirstArg",
-        },
-        discordgobot.CommandDefinitionArgument{
-            Pattern: ".*",
-            Alias:   "everythingElseArg",
-        },
-    },
-    Description: "Say hello",
-    ExposureLevel: discordgobot.EXPOSURE_EVERYWHERE,
-    PermissionLevel: discordgobot.PERMISSION_MODERATOR,
-    Callback:    p.runCommand,
-}
-
-func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.DiscordClient, message discordgobot.Message, args map[string]string, trigger string) {
-    myFirstArg := args["myFirstArg"]
-    everythingElseArg := args["everythingElseArg"]
-
-    client.SendMessage(message.Channel(), "Hello!")
-}
-```
