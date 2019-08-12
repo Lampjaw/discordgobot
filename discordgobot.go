@@ -6,7 +6,7 @@ import (
 )
 
 // VERSION of discordgobot
-const VERSION = "0.2.2"
+const VERSION = "0.2.3"
 
 // NewBot creates a new Gobot
 func NewBot(token string, config *GobotConf) (b *Gobot, err error) {

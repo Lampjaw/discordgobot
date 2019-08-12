@@ -107,7 +107,8 @@ func (b *Gobot) listen(messageChan <-chan Message) {
 
 		commandPrefix := b.GetCommandPrefix(message)
 
-		if handleCommandsRequest(b, message, commandPrefix) {
+		if isCommandsRequest(b.Client, commandPrefix, message) {
+			go handleCommandsRequest(b, message, commandPrefix)
 			continue
 		}
 
@@ -126,39 +127,11 @@ func findCommandMatch(b *Gobot, plugin IPlugin, message Message, commandPrefix s
 		return
 	}
 
-	mentionPrefix := fmt.Sprintf("<@%s> ", b.Client.UserID())
+	messageParts := strings.Fields(message.RawMessage())
 
 	for _, commandDefinition := range plugin.Commands() {
-		if commandDefinition.ExposureLevel > 0 {
-			switch commandDefinition.ExposureLevel {
-			case EXPOSURE_PRIVATE:
-				if !b.Client.IsPrivate(message) {
-					return
-				}
-			case EXPOSURE_PUBLIC:
-				if b.Client.IsPrivate(message) {
-					return
-				}
-			}
-		}
-
-		if commandDefinition.PermissionLevel > 0 {
-			switch commandDefinition.PermissionLevel {
-			case PERMISSION_MODERATOR:
-				if !b.Client.IsModerator(message) {
-					return
-				}
-				fallthrough
-			case PERMISSION_ADMIN:
-				if !b.Client.IsChannelOwner(message) {
-					return
-				}
-				fallthrough
-			case PERMISSION_OWNER:
-				if !b.Client.IsBotOwner(message) {
-					return
-				}
-			}
+		if !validateCommandAccess(b.Client, commandDefinition, message) {
+			continue
 		}
 
 		definitionPrefix := getPrefixFromCommand(b, b.Client, commandDefinition, message)
@@ -168,27 +141,71 @@ func findCommandMatch(b *Gobot, plugin IPlugin, message Message, commandPrefix s
 		}
 
 		for _, trigger := range commandDefinition.Triggers {
-			definitionTrigger := definitionPrefix + trigger
-			mentionTrigger := mentionPrefix + trigger
+			if isTriggerMatch, triggerMatch := findTriggerMatch(commandDefinition, trigger, definitionPrefix, messageParts, message); isTriggerMatch {
+				if isArgumentMatch, parsedArgs := extractCommandArguments(message, triggerMatch, commandDefinition.Arguments); isArgumentMatch {
+					log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.RawMessage())
 
-			triggerMatch := ""
-
-			if strings.HasPrefix(message.RawMessage(), definitionTrigger) {
-				triggerMatch = definitionTrigger
-			} else if strings.HasPrefix(message.RawMessage(), mentionTrigger) {
-				triggerMatch = mentionTrigger
-			}
-
-			if triggerMatch != "" {
-				log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.RawMessage())
-
-				if isMatch, parsedArgs := extractCommandArguments(message, triggerMatch, commandDefinition.Arguments); isMatch {
-					commandDefinition.Callback(b, b.Client, message, parsedArgs, trigger)
-					return
+					go commandDefinition.Callback(b, b.Client, message, parsedArgs, trigger)
 				}
 			}
 		}
 	}
+}
+
+func findTriggerMatch(commandDefinition CommandDefinition, commandTrigger string, definitionPrefix string, messageParts []string, message Message) (bool, string) {
+	if messageParts[0] == definitionPrefix+commandTrigger {
+		return true, messageParts[0]
+	}
+
+	if !commandDefinition.DisableTriggerOnMention && len(messageParts) > 1 {
+		return message.IsMentionTrigger(commandTrigger)
+	}
+
+	return false, ""
+}
+
+func validateCommandAccess(client *DiscordClient, commandDefinition CommandDefinition, message Message) bool {
+	if commandDefinition.ExposureLevel > 0 {
+		switch commandDefinition.ExposureLevel {
+		case EXPOSURE_PRIVATE:
+			if !client.IsPrivate(message) {
+				return false
+			}
+		case EXPOSURE_PUBLIC:
+			if client.IsPrivate(message) {
+				return false
+			}
+		}
+	}
+
+	return validateCommandAccessPermission(client, commandDefinition.PermissionLevel, message)
+}
+
+func validateCommandAccessPermission(client *DiscordClient, permissionLevel PermissionLevel, message Message) bool {
+	if permissionLevel <= 0 {
+		return true
+	}
+
+	switch permissionLevel {
+	case PERMISSION_USER:
+		return true
+	case PERMISSION_MODERATOR:
+		if client.IsModerator(message) {
+			return true
+		}
+		fallthrough
+	case PERMISSION_ADMIN:
+		if client.IsChannelOwner(message) {
+			return true
+		}
+		fallthrough
+	case PERMISSION_OWNER:
+		if client.IsBotOwner(message) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func extractCommandArguments(message Message, trigger string, arguments []CommandDefinitionArgument) (bool, map[string]string) {
@@ -248,18 +265,7 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func handleCommandsRequest(b *Gobot, message Message, commandPrefix string) bool {
-	if b.Config.CommandLookupDisabled {
-		return false
-	}
-
-	commandTrigger := commandPrefix + "commands"
-	mentionTrigger := fmt.Sprintf("<@%s> commands", b.Client.UserID())
-
-	if !strings.HasPrefix(message.RawMessage(), commandTrigger) && !strings.HasPrefix(message.RawMessage(), mentionTrigger) {
-		return false
-	}
-
+func handleCommandsRequest(b *Gobot, message Message, commandPrefix string) {
 	help := []string{}
 
 	for _, plugin := range b.Plugins {
@@ -297,8 +303,15 @@ func handleCommandsRequest(b *Gobot, message Message, commandPrefix string) bool
 	}
 
 	b.Client.SendMessage(message.Channel(), strings.Join(help, "\n"))
+}
 
-	return true
+func isCommandsRequest(client *DiscordClient, commandPrefix string, message Message) bool {
+	triggerTerm := "commands"
+	commandTrigger := commandPrefix + triggerTerm
+
+	triggered, _ := message.IsMentionTrigger(triggerTerm)
+
+	return triggered || strings.HasPrefix(message.RawMessage(), commandTrigger)
 }
 
 func getPrefixFromCommand(bot *Gobot, client *DiscordClient, command CommandDefinition, message Message) string {

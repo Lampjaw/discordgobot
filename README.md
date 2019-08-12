@@ -107,6 +107,8 @@ func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.
 
 `Unlisted bool` - Prevents the command from being displayed in the commands list lookup when set to true.
 
+`DisableTriggerOnMention bool` - Prevents a command from being triggered when a user uses @BotName when set to true. example: `@BotName <trigger> <argument>`
+
 `CommandPrefix string` - Allows a different prefix to be set compared to the rest of the bot commands.
 
 `CommandPrefixFunc func(bot *Gobot, client *DiscordClient, message Message) string` - An optional function to be called if the command prefix should be assigned dynamically.

@@ -16,8 +16,10 @@ type CommandDefinition struct {
 	PermissionLevel PermissionLevel
 	// ExposureLevel restricts commands from being processed in either public, private, or both settings. Default is EXPOSURE_EVERYWHERE.
 	ExposureLevel ExposureLevel
-	// Unlisted prevents a command from being listed when a user calls the commands list.
+	// Unlisted prevents a command from being listed when a user calls the commands list. Default is false.
 	Unlisted bool
+	// DisableTriggerOnMention prevents a command from being triggered when a user uses @BotName. Default is false.
+	DisableTriggerOnMention bool
 	// CommandPrefix allows a different prefix to be set compared to the rest of the bot commands.
 	CommandPrefix string
 	// CommandPrefixFunc allows a function to be used to determine the command prefix.

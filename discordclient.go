@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"regexp"
-	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -21,19 +20,6 @@ const (
 	// MessageTypeDelete is the message type for message deletion.
 	MessageTypeDelete = "delete"
 )
-
-// Message defines discord message helpers
-type Message interface {
-	Channel() string
-	UserName() string
-	UserID() string
-	UserAvatar() string
-	Message() string
-	RawMessage() string
-	MessageID() string
-	Type() MessageType
-	Timestamp() (time.Time, error)
-}
 
 var errAlreadyJoined = errors.New("already joined")
 
