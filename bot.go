@@ -190,14 +190,30 @@ func extractCommandArguments(message Message, trigger string, arguments []Comman
 
 	var argPatterns []string
 
-	for _, argument := range arguments {
-		argPatterns = append(argPatterns, fmt.Sprintf("(?P<%s>%s)", argument.Alias, argument.Pattern))
-	}
-	var pattern = fmt.Sprintf("^%s$", strings.Join(argPatterns, " "))
+	for i, argument := range arguments {
+		pattern := ""
 
-	var trimmedContent = strings.TrimPrefix(message.Message(), fmt.Sprintf("%s ", trigger))
+		if i == 0 {
+			pattern = fmt.Sprintf("(?P<%s>%s)", argument.Alias, argument.Pattern)
+		} else {
+			pattern = fmt.Sprintf("(?:\\s+(?P<%s>%s))", argument.Alias, argument.Pattern)
+		}
+
+		if argument.Optional {
+			pattern += "?"
+		}
+
+		argPatterns = append(argPatterns, pattern)
+	}
+	var pattern = fmt.Sprintf("^%s$", strings.Join(argPatterns, ""))
+
+	var trimmedContent = strings.TrimSpace(strings.TrimPrefix(message.Message(), fmt.Sprintf("%s", trigger)))
 	pat := regexp.MustCompile(pattern)
 	argsMatch := pat.FindStringSubmatch(trimmedContent)
+
+	if len(argsMatch) == len(arguments)-1 && arguments[len(arguments)-1].Optional {
+		argsMatch = append(argsMatch, "")
+	}
 
 	if argsMatch == nil || len(argsMatch) == 1 {
 		return false, nil
