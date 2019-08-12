@@ -126,6 +126,8 @@ func findCommandMatch(b *Gobot, plugin IPlugin, message Message, commandPrefix s
 		return
 	}
 
+	mentionPrefix := fmt.Sprintf("<@%s> ", b.Client.UserID())
+
 	for _, commandDefinition := range plugin.Commands() {
 		if commandDefinition.ExposureLevel > 0 {
 			switch commandDefinition.ExposureLevel {
@@ -166,13 +168,21 @@ func findCommandMatch(b *Gobot, plugin IPlugin, message Message, commandPrefix s
 		}
 
 		for _, trigger := range commandDefinition.Triggers {
-			var trig = definitionPrefix + trigger
-			var parts = strings.Split(message.Message(), " ")
+			definitionTrigger := definitionPrefix + trigger
+			mentionTrigger := mentionPrefix + trigger
 
-			if parts[0] == trig {
-				log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.Message())
+			triggerMatch := ""
 
-				if isMatch, parsedArgs := extractCommandArguments(message, trig, commandDefinition.Arguments); isMatch {
+			if strings.HasPrefix(message.RawMessage(), definitionTrigger) {
+				triggerMatch = definitionTrigger
+			} else if strings.HasPrefix(message.RawMessage(), mentionTrigger) {
+				triggerMatch = mentionTrigger
+			}
+
+			if triggerMatch != "" {
+				log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.RawMessage())
+
+				if isMatch, parsedArgs := extractCommandArguments(message, triggerMatch, commandDefinition.Arguments); isMatch {
 					commandDefinition.Callback(b, b.Client, message, parsedArgs, trigger)
 					return
 				}
@@ -207,7 +217,7 @@ func extractCommandArguments(message Message, trigger string, arguments []Comman
 	}
 	var pattern = fmt.Sprintf("^%s$", strings.Join(argPatterns, ""))
 
-	var trimmedContent = strings.TrimSpace(strings.TrimPrefix(message.Message(), fmt.Sprintf("%s", trigger)))
+	var trimmedContent = strings.TrimSpace(strings.TrimPrefix(message.RawMessage(), fmt.Sprintf("%s", trigger)))
 	pat := regexp.MustCompile(pattern)
 	argsMatch := pat.FindStringSubmatch(trimmedContent)
 
@@ -243,11 +253,10 @@ func handleCommandsRequest(b *Gobot, message Message, commandPrefix string) bool
 		return false
 	}
 
-	var trig = commandPrefix + "commands"
+	commandTrigger := commandPrefix + "commands"
+	mentionTrigger := fmt.Sprintf("<@%s> commands", b.Client.UserID())
 
-	var parts = strings.Split(message.Message(), " ")
-
-	if parts[0] != trig {
+	if !strings.HasPrefix(message.RawMessage(), commandTrigger) && !strings.HasPrefix(message.RawMessage(), mentionTrigger) {
 		return false
 	}
 
