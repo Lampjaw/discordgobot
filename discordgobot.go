@@ -6,12 +6,12 @@ import (
 )
 
 // VERSION of discordgobot
-const VERSION = "0.2.3"
+const VERSION = "0.2.4"
 
 // NewBot creates a new Gobot
-func NewBot(token string, config *GobotConf) (b *Gobot, err error) {
+func NewBot(token string, config *GobotConf, state interface{}) (b *Gobot, err error) {
 	if token == "" {
-		fmt.Println("No token provided. Please run: mutterblack -t <bot token>")
+		fmt.Println("No token provided.")
 		return nil, errors.New("Missing discord token")
 	}
 
@@ -25,6 +25,7 @@ func NewBot(token string, config *GobotConf) (b *Gobot, err error) {
 		},
 		Plugins: make(map[string]IPlugin, 0),
 		Config:  config,
+		State:   state,
 	}
 
 	return bot, nil

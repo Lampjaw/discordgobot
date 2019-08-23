@@ -33,6 +33,7 @@ type Gobot struct {
 	Plugins         map[string]IPlugin
 	Config          *GobotConf
 	messageChannels []chan Message
+	State           interface{}
 }
 
 // Open loads plugin data and starts listening for discord messages

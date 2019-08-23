@@ -29,7 +29,7 @@ func main() {
 		CommandPrefix: "?",
 	}
 
-	b, err := discordgobot.NewBot(token, config)
+	b, err := discordgobot.NewBot(token, config, nil)
 
 	if err != nil {
 		log.Println(err)
