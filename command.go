@@ -25,7 +25,17 @@ type CommandDefinition struct {
 	// CommandPrefixFunc allows a function to be used to determine the command prefix.
 	CommandPrefixFunc func(bot *Gobot, client *DiscordClient, message Message) string
 	// Callback is a function reference that's called when a message meets trigger and argument requirements.
-	Callback func(bot *Gobot, client *DiscordClient, message Message, args map[string]string, trigger string)
+	Callback func(bot *Gobot, client *DiscordClient, payload CommandPayload)
+}
+
+// CommandPayload contains data related to the incomming request
+type CommandPayload struct {
+	// Message is the entire message received that activated the command
+	Message Message
+	// Arguments contain a hash of all configured CommandDefinitionArguments that could be parsed
+	Arguments map[string]string
+	// Trigger is the specific string that activated the command
+	Trigger string
 }
 
 // CommandDefinitionArgument defines parameters to parse from message text
@@ -124,4 +134,21 @@ func CommandHelp(client *DiscordClient, command string, arguments []string, desc
 	}
 
 	return fmt.Sprintf("`%s` - %s", commandString, description)
+}
+
+func validateCommand(command *CommandDefinition) bool {
+	errors := make([]string, 0)
+
+	if isValid, commandErrors := command.IsValid(); !isValid {
+		errors = append(errors, commandErrors...)
+	}
+
+	if len(errors) > 0 {
+		for _, errmsg := range errors {
+			fmt.Printf("Command validation error: %s: %s", command.CommandID, errmsg)
+		}
+		return false
+	}
+
+	return true
 }

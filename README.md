@@ -23,6 +23,14 @@ bot.RegisterPlugin(NewMyAwesomePlugin())
 bot.RegisterPlugin(NewMyAwesomePlugin())
 ```
 
+Or you can register individual commands directly
+
+```go
+bot.RegisterCommand("6roll", "rolls a 6 sided die", callbackFunc)
+bot.RegisterPrefixCommand("?", "20roll", "rolls a 20 sided die", callbackFunc)
+bot.RegisterCommandDefinition(myCommandDefinition)
+```
+
 Start listening
 
 ```go
@@ -67,13 +75,32 @@ discordgobot.CommandDefinition{
     Callback:    p.runCommand,
 }
 
-func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.DiscordClient, message discordgobot.Message, args map[string]string, trigger string) {
-    myFirstArg := args["myFirstArg"]
-    everythingElseArg := args["everythingElseArg"]
+func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.DiscordClient, payload CommandPayload) {
+    myFirstArg := payload.Arguments["myFirstArg"]
+    everythingElseArg := payload.Arguments["everythingElseArg"]
 
-    client.SendMessage(message.Channel(), "Hello!")
+    client.SendMessage(payload.message.Channel(), "Hello!")
 }
 ```
+
+## Methods
+
+`NewBot(token string, config GobotConf, state interface{}) (b *Gobot, err error)` 
+
+`RegisterPlugin(plugin IPlugin) void` - Registers a plugin to process messages or commands
+
+`RegisterCommand(trigger string, description string, callback func(bot *Gobot, client *DiscordClient, payload CommandPayload)) void` - Registers a command
+
+`RegisterPrefixCommand(prefix string, trigger string, description string, callback func(bot *Gobot, client *DiscordClient, payload CommandPayload)) void` - Registers a command with a static prefix
+
+`RegisterCommandDefinition(cmdDef *CommandDefinition) void` - Registers a command definition
+
+`GetCommandPrefix(message Message) string` - Returns the prefix as configured in the GobotConf or the default if none is available
+
+`Open() void` - Loads plugin data and starts listening for discord messages
+
+`Save() void` - Writes all plugin data to disk
+
 
 ## Models
 
@@ -95,7 +122,7 @@ func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.
 
 `Triggers []string` - (Required) An array of activation terms. The command prefix is added automatically.
 
-`Callback func(bot *discordgo.Gobot, client *discordgo.DiscordClient, message discordgo.Message, args map[string]string, trigger string)` - (Required) The callback function to use when a command is successfully called.
+`Callback func(bot *discordgo.Gobot, client *discordgo.DiscordClient, payload CommandPayload)` - (Required) The callback function to use when a command is successfully called.
 
 `Description string` - A short description used when the commands list is generated.
 
@@ -120,3 +147,12 @@ func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.
 `Pattern string` - (Required) A regex pattern to validate and extract the argument from.
 
 `Optional bool` - If an argument is optional than the command will execute even if the argument isn't provided in the input.
+
+### [Model] CommandPayload
+
+`Message Message` - The entire message received that activated the command
+
+`Arguments map[string]string` - Contain a hash of all configured CommandDefinitionArguments that could be parsed
+
+`Trigger string` - The specific string that activated the command
+	

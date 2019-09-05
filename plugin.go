@@ -18,7 +18,7 @@ type IPlugin interface {
 	// Message is a callback from every incoming message. Setting Commands is recommended unless you need to see everything.
 	Message(*Gobot, *DiscordClient, Message) error
 	// Commands returns an array of CommandDefinitions
-	Commands() []CommandDefinition
+	Commands() []*CommandDefinition
 }
 
 // Plugin is the basic model to build bot plugins off of
@@ -27,7 +27,7 @@ type Plugin struct {
 }
 
 // Commands returns an array of CommandDefinitions
-func (p *Plugin) Commands() []CommandDefinition {
+func (p *Plugin) Commands() []*CommandDefinition {
 	return nil
 }
 

@@ -31,6 +31,7 @@ type GobotConf struct {
 type Gobot struct {
 	Client          *DiscordClient
 	Plugins         map[string]IPlugin
+	Commands        map[string]*CommandDefinition
 	Config          *GobotConf
 	messageChannels []chan Message
 	State           interface{}
@@ -39,6 +40,7 @@ type Gobot struct {
 // Open loads plugin data and starts listening for discord messages
 func (b *Gobot) Open() {
 	var invalidPlugin = false
+	var invalidCommand = false
 
 	for _, plugin := range b.Plugins {
 		if !validatePlugin(plugin) {
@@ -48,6 +50,17 @@ func (b *Gobot) Open() {
 
 	if invalidPlugin {
 		log.Printf("A misconfigured plugin was found.")
+		return
+	}
+
+	for _, command := range b.Commands {
+		if !validateCommand(command) {
+			invalidCommand = true
+		}
+	}
+
+	if invalidCommand {
+		log.Printf("A misconfigured command was found.")
 		return
 	}
 
@@ -76,7 +89,34 @@ func (b *Gobot) RegisterPlugin(plugin IPlugin) {
 	b.Plugins[plugin.Name()] = plugin
 }
 
-// GetCommandPrefix returns the prefix as configured in the GobotConf or the default if non is available
+// RegisterCommand registers a command
+func (b *Gobot) RegisterCommand(trigger string, description string, callback func(bot *Gobot, client *DiscordClient, payload CommandPayload)) {
+	b.RegisterPrefixCommand("", trigger, description, callback)
+}
+
+// RegisterPrefixCommand registers a command with a static prefix
+func (b *Gobot) RegisterPrefixCommand(prefix string, trigger string, description string, callback func(bot *Gobot, client *DiscordClient, payload CommandPayload)) {
+	def := &CommandDefinition{
+		CommandID:   fmt.Sprintf("gobot-cmd-%s", trigger),
+		Description: description,
+		Triggers: []string{
+			trigger,
+		},
+		CommandPrefix: prefix,
+		Callback:      callback,
+	}
+	b.Commands[def.CommandID] = def
+}
+
+// RegisterCommandDefinition registers a command definition
+func (b *Gobot) RegisterCommandDefinition(cmdDef *CommandDefinition) {
+	if b.Commands[cmdDef.CommandID] != nil {
+		log.Println("Command with that id is already registered", cmdDef.CommandID)
+	}
+	b.Commands[cmdDef.CommandID] = cmdDef
+}
+
+// GetCommandPrefix returns the prefix as configured in the GobotConf or the default if none is available
 func (b *Gobot) GetCommandPrefix(message Message) string {
 	if b.Config != nil {
 		if b.Config.CommandPrefixFunc != nil {
@@ -113,47 +153,62 @@ func (b *Gobot) listen(messageChan <-chan Message) {
 			continue
 		}
 
-		plugins := b.Plugins
-		for _, plugin := range plugins {
+		messageParts := strings.Fields(message.RawMessage())
+
+		for _, command := range b.Commands {
+			if !b.Client.IsMe(message) {
+				go findCommandDefinitionCommandMatch(b, command, message, commandPrefix, messageParts)
+			}
+		}
+
+		for _, plugin := range b.Plugins {
 			go plugin.Message(b, b.Client, message)
 			if !b.Client.IsMe(message) {
-				go findCommandMatch(b, plugin, message, commandPrefix)
+				go findPluginCommandMatch(b, plugin, message, commandPrefix, messageParts)
 			}
 		}
 	}
 }
 
-func findCommandMatch(b *Gobot, plugin IPlugin, message Message, commandPrefix string) {
+func findPluginCommandMatch(b *Gobot, plugin IPlugin, message Message, commandPrefix string, parts []string) {
 	if plugin.Commands() == nil || message.Message() == "" {
 		return
 	}
 
-	messageParts := strings.Fields(message.RawMessage())
-
 	for _, commandDefinition := range plugin.Commands() {
-		if !validateCommandAccess(b.Client, commandDefinition, message) {
-			continue
-		}
+		findCommandDefinitionCommandMatch(b, commandDefinition, message, commandPrefix, parts)
+	}
+}
 
-		definitionPrefix := getPrefixFromCommand(b, b.Client, commandDefinition, message)
+func findCommandDefinitionCommandMatch(b *Gobot, commandDefinition *CommandDefinition, message Message, commandPrefix string, parts []string) {
+	if message.Message() == "" || !validateCommandAccess(b.Client, commandDefinition, message) {
+		return
+	}
 
-		if definitionPrefix == "" {
-			definitionPrefix = commandPrefix
-		}
+	definitionPrefix := getPrefixFromCommand(b, b.Client, commandDefinition, message)
 
-		for _, trigger := range commandDefinition.Triggers {
-			if isTriggerMatch, triggerMatch := findTriggerMatch(commandDefinition, trigger, definitionPrefix, messageParts, message); isTriggerMatch {
-				if isArgumentMatch, parsedArgs := extractCommandArguments(message, triggerMatch, commandDefinition.Arguments); isArgumentMatch {
-					log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.RawMessage())
+	if definitionPrefix == "" {
+		definitionPrefix = commandPrefix
+	}
 
-					go commandDefinition.Callback(b, b.Client, message, parsedArgs, trigger)
+	for _, trigger := range commandDefinition.Triggers {
+		if isTriggerMatch, triggerMatch := findTriggerMatch(commandDefinition, trigger, definitionPrefix, parts, message); isTriggerMatch {
+			if isArgumentMatch, parsedArgs := extractCommandArguments(message, triggerMatch, commandDefinition.Arguments); isArgumentMatch {
+				log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.RawMessage())
+
+				payload := CommandPayload{
+					Trigger:   trigger,
+					Arguments: parsedArgs,
+					Message:   message,
 				}
+
+				go commandDefinition.Callback(b, b.Client, payload)
 			}
 		}
 	}
 }
 
-func findTriggerMatch(commandDefinition CommandDefinition, commandTrigger string, definitionPrefix string, messageParts []string, message Message) (bool, string) {
+func findTriggerMatch(commandDefinition *CommandDefinition, commandTrigger string, definitionPrefix string, messageParts []string, message Message) (bool, string) {
 	if messageParts[0] == definitionPrefix+commandTrigger {
 		return true, messageParts[0]
 	}
@@ -165,7 +220,7 @@ func findTriggerMatch(commandDefinition CommandDefinition, commandTrigger string
 	return false, ""
 }
 
-func validateCommandAccess(client *DiscordClient, commandDefinition CommandDefinition, message Message) bool {
+func validateCommandAccess(client *DiscordClient, commandDefinition *CommandDefinition, message Message) bool {
 	if commandDefinition.ExposureLevel > 0 {
 		switch commandDefinition.ExposureLevel {
 		case EXPOSURE_PRIVATE:
@@ -297,6 +352,20 @@ func handleCommandsRequest(b *Gobot, message Message, commandPrefix string) {
 		}
 	}
 
+	for _, commandDefinition := range b.Commands {
+		if commandDefinition.Unlisted {
+			continue
+		}
+
+		definitionPrefix := getPrefixFromCommand(b, b.Client, commandDefinition, message)
+
+		if definitionPrefix == "" {
+			definitionPrefix = commandPrefix
+		}
+
+		help = append(help, commandDefinition.Help(b.Client, definitionPrefix))
+	}
+
 	sort.Strings(help)
 
 	if len(help) == 0 {
@@ -315,7 +384,7 @@ func isCommandsRequest(client *DiscordClient, commandPrefix string, message Mess
 	return triggered || strings.HasPrefix(message.RawMessage(), commandTrigger)
 }
 
-func getPrefixFromCommand(bot *Gobot, client *DiscordClient, command CommandDefinition, message Message) string {
+func getPrefixFromCommand(bot *Gobot, client *DiscordClient, command *CommandDefinition, message Message) string {
 	if command.CommandPrefixFunc != nil {
 		return command.CommandPrefixFunc(bot, client, message)
 	}

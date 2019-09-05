@@ -17,9 +17,9 @@ func (p *ExamplePlugin) Name() string {
 }
 
 // Commands defines how we want to listen for things to execute on this plugin
-func (p *ExamplePlugin) Commands() []discordgobot.CommandDefinition {
-	return []discordgobot.CommandDefinition{
-		discordgobot.CommandDefinition{
+func (p *ExamplePlugin) Commands() []*discordgobot.CommandDefinition {
+	return []*discordgobot.CommandDefinition{
+		&discordgobot.CommandDefinition{
 			CommandID: "hello-command",
 			Triggers: []string{
 				"hello",
@@ -30,10 +30,10 @@ func (p *ExamplePlugin) Commands() []discordgobot.CommandDefinition {
 	}
 }
 
-func (p *ExamplePlugin) hellocallback(bot *discordgobot.Gobot, client *discordgobot.DiscordClient, message discordgobot.Message, args map[string]string, trigger string) {
+func (p *ExamplePlugin) hellocallback(bot *discordgobot.Gobot, client *discordgobot.DiscordClient, payload discordgobot.CommandPayload) {
 	p.RLock()
 
-	client.SendMessage(message.Channel(), "Hello, World!")
+	client.SendMessage(payload.Message.Channel(), "Hello, World!")
 
 	p.RUnlock()
 }

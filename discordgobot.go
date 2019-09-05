@@ -6,7 +6,7 @@ import (
 )
 
 // VERSION of discordgobot
-const VERSION = "0.2.4"
+const VERSION = "0.3.0"
 
 // NewBot creates a new Gobot
 func NewBot(token string, config *GobotConf, state interface{}) (b *Gobot, err error) {
@@ -23,9 +23,10 @@ func NewBot(token string, config *GobotConf, state interface{}) (b *Gobot, err e
 			messageChan: make(chan Message, 200),
 			OwnerUserID: config.OwnerUserID,
 		},
-		Plugins: make(map[string]IPlugin, 0),
-		Config:  config,
-		State:   state,
+		Plugins:  make(map[string]IPlugin, 0),
+		Commands: make(map[string]*CommandDefinition, 0),
+		Config:   config,
+		State:    state,
 	}
 
 	return bot, nil

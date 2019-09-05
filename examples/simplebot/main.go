@@ -37,6 +37,32 @@ func main() {
 
 	b.RegisterPlugin(NewExamplePlugin())
 
+	b.RegisterCommand("cmd",
+		"this was registered with RegisterCommand!",
+		func(b *discordgobot.Gobot, client *discordgobot.DiscordClient, payload discordgobot.CommandPayload) {
+			client.SendMessage(payload.Message.Channel(), "A RegisterCommand response!")
+		},
+	)
+
+	b.RegisterPrefixCommand("??",
+		"pcmd",
+		"this was registered with RegisterPrefixCommand!",
+		func(b *discordgobot.Gobot, client *discordgobot.DiscordClient, payload discordgobot.CommandPayload) {
+			client.SendMessage(payload.Message.Channel(), "A RegisterPrefixCommand response!")
+		},
+	)
+
+	b.RegisterCommandDefinition(&discordgobot.CommandDefinition{
+		CommandID: "command-definition-command",
+		Triggers: []string{
+			"def",
+		},
+		Description: "this was registered with RegisterCommandDefinition!",
+		Callback: func(b *discordgobot.Gobot, client *discordgobot.DiscordClient, payload discordgobot.CommandPayload) {
+			client.SendMessage(payload.Message.Channel(), "A RegisterCommandDefinition response!")
+		},
+	})
+
 	b.Open()
 
 	c := make(chan os.Signal, 1)
