@@ -22,6 +22,7 @@ const (
 )
 
 var errAlreadyJoined = errors.New("already joined")
+var errNotFound = errors.New("not found")
 
 // DiscordClient handles discord sessions and client configurations
 type DiscordClient struct {
@@ -398,17 +399,28 @@ func (d *DiscordClient) Nickname(message Message) string {
 func (d *DiscordClient) NicknameForID(userID, userName, channelID string) string {
 	c, err := d.Channel(channelID)
 	if err == nil {
-		g, err := d.Guild(c.GuildID)
+		gm, err := d.GuildMember(userID, c.GuildID)
 		if err == nil {
-			for _, m := range g.Members {
-				if m.User.ID == userID {
-					if m.Nick != "" {
-						return m.Nick
-					}
-					break
-				}
+			if gm.Nick != "" {
+				return gm.Nick
 			}
 		}
 	}
 	return userName
+}
+
+// GuildMember resolves a guild member based on a userID and guildID.
+func (d *DiscordClient) GuildMember(userID, guildID string) (*discordgo.Member, error) {
+	g, err := d.Guild(guildID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, m := range g.Members {
+		if m.User.ID == userID {
+			return m, nil
+		}
+	}
+
+	return nil, errNotFound
 }
