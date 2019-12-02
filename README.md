@@ -95,6 +95,10 @@ func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.
 
 `RegisterCommandDefinition(cmdDef *CommandDefinition) void` - Registers a command definition
 
+`RemoveCommand(commandID string)` - Unregisters a command. Does not effect plugins.
+
+`UpdateCommandDefinition(cmdDef *CommandDefinition)` - Updates a command definition or registers if it doesn't exist. Does not effect plugins.
+
 `GetCommandPrefix(message Message) string` - Returns the prefix as configured in the GobotConf or the default if none is available
 
 `Open() void` - Loads plugin data and starts listening for discord messages

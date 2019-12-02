@@ -116,6 +116,16 @@ func (b *Gobot) RegisterCommandDefinition(cmdDef *CommandDefinition) {
 	b.Commands[cmdDef.CommandID] = cmdDef
 }
 
+// RemoveCommand unregisters a command. Does not effect plugins.
+func (b *Gobot) RemoveCommand(commandID string) {
+	delete(b.Commands, commandID)
+}
+
+// UpdateCommandDefinition updates a command definition or registers if it doesn't exist
+func (b *Gobot) UpdateCommandDefinition(cmdDef *CommandDefinition) {
+	b.Commands[cmdDef.CommandID] = cmdDef
+}
+
 // GetCommandPrefix returns the prefix as configured in the GobotConf or the default if none is available
 func (b *Gobot) GetCommandPrefix(message Message) string {
 	if b.Config != nil {
