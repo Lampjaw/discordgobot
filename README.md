@@ -154,6 +154,8 @@ func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.
 
 ### [Model] CommandPayload
 
+`CommandID` - The identifier of the command definition
+
 `Message Message` - The entire message received that activated the command
 
 `Arguments map[string]string` - Contain a hash of all configured CommandDefinitionArguments that could be parsed

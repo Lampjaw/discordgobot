@@ -207,6 +207,7 @@ func findCommandDefinitionCommandMatch(b *Gobot, commandDefinition *CommandDefin
 				log.Printf("<%s> %s: %s\n", message.Channel(), message.UserName(), message.RawMessage())
 
 				payload := CommandPayload{
+					CommandID: commandDefinition.CommandID,
 					Trigger:   trigger,
 					Arguments: parsedArgs,
 					Message:   message,

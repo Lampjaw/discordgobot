@@ -30,6 +30,8 @@ type CommandDefinition struct {
 
 // CommandPayload contains data related to the incomming request
 type CommandPayload struct {
+	// CommandID is the identifier of the command definition
+	CommandID string
 	// Message is the entire message received that activated the command
 	Message Message
 	// Arguments contain a hash of all configured CommandDefinitionArguments that could be parsed
