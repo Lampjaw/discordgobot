@@ -101,7 +101,11 @@ func (p *myCoolPlugin) runCommand(bot *discordgobot.Gobot, client *discordgobot.
 
 `GetCommandPrefix(message Message) string` - Returns the prefix as configured in the GobotConf or the default if none is available
 
-`Open() void` - Loads plugin data and starts listening for discord messages
+`Open() error` - Starts listening for discord messages with a recommended number of shards
+
+`OpenShards(shardCount int) error` - Starts listening for discord messages with a specified number of shards
+
+`OpenShard(shardCount int, shardID int) error` - Starts listening for discord messages as a specific shard
 
 `Save() void` - Writes all plugin data to disk
 

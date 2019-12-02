@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/lampjaw/discordclient"
 )
 
 // DEFAULT_COMMAND_PREFIX is the default prefix character if none is configured
@@ -37,41 +39,56 @@ type Gobot struct {
 	State           interface{}
 }
 
-// Open loads plugin data and starts listening for discord messages
-func (b *Gobot) Open() {
-	var invalidPlugin = false
-	var invalidCommand = false
+// Open starts listening for discord messages with a recommended number of shards
+func (b *Gobot) Open() error {
+	return b.openShardsInternal(-1, -1)
+}
 
+// OpenShards starts listening for discord messages with a specified number of shards
+func (b *Gobot) OpenShards(shardCount int) error {
+	return b.openShardsInternal(shardCount, -1)
+}
+
+// OpenShard starts listening for discord messages as a specific shard
+func (b *Gobot) OpenShard(shardCount int, shardID int) error {
+	return b.openShardsInternal(shardCount, shardID)
+}
+
+func (b *Gobot) openShardsInternal(shardCount int, shardID int) error {
 	for _, plugin := range b.Plugins {
 		if !validatePlugin(plugin) {
-			invalidPlugin = true
+			return fmt.Errorf("A misconfigured plugin was found: '%s'", plugin.Name())
 		}
-	}
-
-	if invalidPlugin {
-		log.Printf("A misconfigured plugin was found.")
-		return
 	}
 
 	for _, command := range b.Commands {
 		if !validateCommand(command) {
-			invalidCommand = true
+			return fmt.Errorf("A misconfigured command was found: '%s'", command.CommandID)
 		}
 	}
 
-	if invalidCommand {
-		log.Printf("A misconfigured command was found.")
-		return
-	}
+	var messageChan <-chan discordclient.Message
+	var err error
 
-	if messageChan, err := b.Client.Open(); err == nil {
-		for _, plugin := range b.Plugins {
-			plugin.Load(b.Client)
-		}
-		go b.listen(messageChan)
+	if shardCount < 1 {
+		messageChan, err = b.Client.Listen(-1)
+	} else if shardID < 0 {
+		messageChan, err = b.Client.Listen(shardCount)
 	} else {
-		log.Printf("Error creating discord service: %v\n", err)
+		messageChan, err = b.Client.ListenConfigure(shardCount, shardID)
 	}
+
+	if err != nil {
+		return fmt.Errorf("Error creating discord service: %v", err)
+	}
+
+	for _, plugin := range b.Plugins {
+		plugin.Load(b.Client)
+	}
+
+	go b.listen(messageChan)
+
+	return nil
 }
 
 // Save writes all plugin data to disk
@@ -151,7 +168,7 @@ func (b *Gobot) getData(plugin IPlugin) []byte {
 	return nil
 }
 
-func (b *Gobot) listen(messageChan <-chan Message) {
+func (b *Gobot) listen(messageChan <-chan discordclient.Message) {
 	log.Printf("Listening")
 	for {
 		message := <-messageChan

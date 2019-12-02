@@ -3,10 +3,12 @@ package discordgobot
 import (
 	"errors"
 	"fmt"
+
+	"github.com/lampjaw/discordclient"
 )
 
 // VERSION of discordgobot
-const VERSION = "0.3.5"
+const VERSION = "0.4.0"
 
 // NewBot creates a new Gobot
 func NewBot(token string, config *GobotConf, state interface{}) (b *Gobot, err error) {
@@ -15,13 +17,9 @@ func NewBot(token string, config *GobotConf, state interface{}) (b *Gobot, err e
 		return nil, errors.New("Missing discord token")
 	}
 
-	args := []interface{}{("Bot " + token)}
-
 	bot := &Gobot{
 		Client: &DiscordClient{
-			args:        args,
-			messageChan: make(chan Message, 200),
-			OwnerUserID: config.OwnerUserID,
+			DiscordClient: discordclient.NewDiscordClient(token, config.OwnerUserID, config.ClientID),
 		},
 		Plugins:  make(map[string]IPlugin, 0),
 		Commands: make(map[string]*CommandDefinition, 0),
